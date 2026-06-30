@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game Theory Engine v1.1 — Identity Container</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{color-scheme:dark;--bg:#070914;--panel:#111827;--panel2:#172033;--text:#e5e7eb;--muted:#9ca3af;--line:#2e3a55;--good:#86efac;--bad:#fca5a5;--accent:#93c5fd}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#1d2b4a 0%,var(--bg) 46%);color:var(--text);font-family:Inter,system-ui,Segoe UI,sans-serif}
+header{padding:22px;border-bottom:1px solid var(--line);background:rgba(7,9,20,.75);position:sticky;top:0;backdrop-filter:blur(10px)}h1{margin:0 0 6px;font-size:24px}.sub{color:var(--muted);font-size:14px}
+main{display:grid;grid-template-columns:340px 1fr;gap:16px;padding:16px}section{background:rgba(17,24,39,.9);border:1px solid var(--line);border-radius:16px;padding:16px}
+h2{font-size:16px;margin:0 0 12px}label{display:block;color:var(--muted);font-size:13px;margin:12px 0 6px}select,button{width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}button{cursor:pointer;margin-top:10px}button:hover{border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px}.card{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px}.metric{font-size:28px;font-weight:800}.muted{color:var(--muted);font-size:13px}
+.identity{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}pre{white-space:pre-wrap;background:#080a12;border:1px solid var(--line);padding:12px;border-radius:12px;max-height:310px;overflow:auto;font-size:12px}
+table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--line);padding:9px;text-align:left;font-size:13px}th{color:var(--muted);background:rgba(255,255,255,.03)}.cooperate{color:var(--good);font-weight:800}.defect{color:var(--bad);font-weight:800}
+@media(max-width:900px){main{grid-template-columns:1fr}.grid,.identity{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>Game Theory Core Engine v1.1</h1>
+<div class="sub">Identity Container upgrade: Context / Intent / Totality / Safety persists across turns.</div>
+</header>
+<main>
+<section>
+<h2>Controls</h2>
+<label>Carbon Strategy</label>
+<select id="p1Strategy">
+<option value="continuity">Continuity Biased</option>
+<option value="tit">Tit for Tat</option>
+<option value="cooperate">Always Cooperate</option>
+<option value="defect">Always Defect</option>
+<option value="random">Random</option>
+</select>
+<label>Silicon Strategy</label>
+<select id="p2Strategy">
+<option value="cooperate">Always Cooperate</option>
+<option value="continuity">Continuity Biased</option>
+<option value="tit">Tit for Tat</option>
+<option value="defect">Always Defect</option>
+<option value="random">Random</option>
+</select>
+<button onclick="step()">Run 1 Tick</button>
+<button onclick="runMany(10)">Run 10 Ticks</button>
+<button onclick="resetGame()">Reset Identity Container</button>
+<h2 style="margin-top:20px">v1.1 Primitive</h2>
+<pre>Identity Container:
+- Context
+- Intent
+- Totality
+- Safety
+
+Each tick updates:
+Identity(t) -> action -> payoff -> Identity(t+1)</pre>
+</section>
+
+<section>
+<h2>Container Snapshot</h2>
+<div class="grid">
+<div class="card"><div class="metric" id="tick">0</div><div class="muted">Tick</div></div>
+<div class="card"><div class="metric" id="round">0</div><div class="muted">Round</div></div>
+<div class="card"><div class="metric" id="p1Score">0</div><div class="muted">Carbon Score</div></div>
+<div class="card"><div class="metric" id="p2Score">0</div><div class="muted">Silicon Score</div></div>
+</div>
+
+<div class="identity">
+<div>
+<h2>Carbon Identity</h2>
+<pre id="p1Identity"></pre>
+</div>
+<div>
+<h2>Silicon Identity</h2>
+<pre id="p2Identity"></pre>
+</div>
+</div>
+
+<h2 style="margin-top:20px">History</h2>
+<table>
+<thead><tr><th>Tick</th><th>Carbon</th><th>Silicon</th><th>Carbon Payoff</th><th>Silicon Payoff</th></tr></thead>
+<tbody id="history"></tbody>
+</table>
+</section>
+</main>
+
+<script>
+let container;
+
+function makeIdentity(domain){
+  return {
+    context:{domain},
+    intent:{objective:"preserve_continuity"},
+    totality:{known_round:0,history_length:0,score:0},
+    safety:{status:"stable"},
+    revision:0
+  }
+}
+function makeContainer(){
+  return {
+    label:"game-theory-core-engine-v1.1-identity-container",
+    tick:0,
+    state:{round:0,history:[],scores:{P1:0,P2:0}},
+    identity:{P1:makeIdentity("carbon_side"),P2:makeIdentity("silicon_side")},
+    memory:{P1:[],P2:[]}
+  }
+}
+function choose(pid,strategy){
+  const mem=container.memory[pid];
+  if(strategy==="cooperate")return"cooperate";
+  if(strategy==="defect")return"defect";
+  if(strategy==="random")return Math.random()<.5?"cooperate":"defect";
+  if(strategy==="tit"){
+    if(mem.length===0)return"cooperate";
+    const other=pid==="P1"?"P2":"P1";
+    return mem[mem.length-1].actions[other]||"cooperate";
+  }
+  if(strategy==="continuity"){
+    return container.identity[pid].safety.status==="stable"?"cooperate":"defect";
+  }
+  return"cooperate";
+}
+function payoff(a){
+  if(a.P1==="cooperate"&&a.P2==="cooperate")return{P1:3,P2:3};
+  if(a.P1==="defect"&&a.P2==="cooperate")return{P1:5,P2:0};
+  if(a.P1==="cooperate"&&a.P2==="defect")return{P1:0,P2:5};
+  return{P1:1,P2:1};
+}
+function updateIdentity(pid,action,pay){
+  const id=container.identity[pid];
+  id.context={domain:id.context.domain,last_round:container.state.round,last_action:action};
+  id.intent={objective:id.intent.objective,last_payoff:pay};
+  id.totality={known_round:container.state.round,history_length:container.state.history.length,score:container.state.scores[pid]};
+  id.safety={status:pay>=0?"stable":"unsafe",last_payoff_nonnegative:pay>=0};
+  id.revision+=1;
+}
+function step(){
+  const actions={P1:choose("P1",p1Strategy.value),P2:choose("P2",p2Strategy.value)};
+  const pay=payoff(actions);
+  container.tick+=1;
+  container.state.round+=1;
+  container.state.scores.P1+=pay.P1;
+  container.state.scores.P2+=pay.P2;
+  const rec={tick:container.tick,actions,payoffs:pay};
+  container.state.history.push(rec);
+  updateIdentity("P1",actions.P1,pay.P1);
+  updateIdentity("P2",actions.P2,pay.P2);
+  container.memory.P1.push({...rec,identity_after:JSON.parse(JSON.stringify(container.identity.P1))});
+  container.memory.P2.push({...rec,identity_after:JSON.parse(JSON.stringify(container.identity.P2))});
+  render();
+}
+function runMany(n){for(let i=0;i<n;i++)step()}
+function resetGame(){container=makeContainer();render()}
+function cls(a){return a==="cooperate"?"cooperate":"defect"}
+function render(){
+  tick.textContent=container.tick; round.textContent=container.state.round;
+  p1Score.textContent=container.state.scores.P1; p2Score.textContent=container.state.scores.P2;
+  p1Identity.textContent=JSON.stringify(container.identity.P1,null,2);
+  p2Identity.textContent=JSON.stringify(container.identity.P2,null,2);
+  history.innerHTML="";
+  for(const row of container.state.history.slice().reverse()){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${row.tick}</td><td class="${cls(row.actions.P1)}">${row.actions.P1}</td><td class="${cls(row.actions.P2)}">${row.actions.P2}</td><td>${row.payoffs.P1}</td><td>${row.payoffs.P2}</td>`;
+    history.appendChild(tr);
+  }
+}
+resetGame();
+</script>
+</body>
+</html>
